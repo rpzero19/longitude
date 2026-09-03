@@ -1,6 +1,6 @@
 name: Longitude
 options:
-  bundleIdPrefix: com.yourname          # ← CHANGE to something you control
+  bundleIdPrefix: io.github.rpzero19
   deploymentTarget:
     iOS: "17.0"                          # broad reach; the on-device model is
                                          # gated at iOS 26 and degrades cleanly
@@ -23,7 +23,7 @@ targets:
       - path: Sources/Longitude
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.yourname.longitude   # ← must be unique
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.rpzero19.longitude
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Longitude
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
