@@ -1,0 +1,40 @@
+name: Longitude
+options:
+  bundleIdPrefix: com.yourname          # ← CHANGE to something you control
+  deploymentTarget:
+    iOS: "17.0"                          # broad reach; the on-device model is
+                                         # gated at iOS 26 and degrades cleanly
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+
+targets:
+  Longitude:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources/Longitude
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.yourname.longitude   # ← must be unique
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Longitude
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: >-
+          Longitude needs access to your photo library so you can add a photo of
+          a lab report. Images stay on this device and are never uploaded.
+        INFOPLIST_KEY_NSCameraUsageDescription: >-
+          Longitude uses the camera so you can photograph a paper lab report.
+          Photos stay on this device and are never uploaded.
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1"
