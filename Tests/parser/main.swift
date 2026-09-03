@@ -1,0 +1,125 @@
+import Foundation
+
+var passed = 0, failed = 0
+func ok(_ n: String, _ c: Bool) {
+    if c { passed += 1; print("  ✅ \(n)") } else { failed += 1; print("  ❌ \(n)") }
+}
+
+// A composite of the layouts Indian and Australian labs actually print.
+let report = """
+Dr Lal PathLabs
+Patient: ANONYMOUS                    Age/Sex: 34 Y / M
+Collected: 14/01/2025                 Reported: 15/01/2025
+
+TEST NAME                    RESULT     UNITS        BIO. REF. INTERVAL
+COMPLETE BLOOD COUNT
+Haemoglobin                  14.2       g/dL         13.0 - 17.0
+Total Leucocyte Count        7800       /cumm        4000 - 10000
+Platelet Count               245        10^3/uL      150 - 410
+PCV                          42.1       %            40.0 - 50.0
+
+LIPID PROFILE
+Cholesterol - Total (CHOD-PAP)   195    mg/dL        < 200
+HDL Cholesterol              48         mg/dL        > 40
+LDL Cholesterol              118        mg/dL        < 100
+Triglycerides                142        mg/dL        < 150
+
+LIVER FUNCTION
+SGPT (ALT)                   32         U/L          < 50
+SGOT (AST)                   28         U/L          < 50
+Total Bilirubin              0.8        mg/dL        0.3 - 1.2
+
+OTHERS
+HbA1c                        5.6        %            4.0 - 5.6
+TSH (Ultrasensitive)         2.45       uIU/mL       0.35 - 5.50
+25 OH Vitamin D              32         ng/mL        30 - 100
+Vitamin B12                  450        pg/mL        211 - 911
+S. Creatinine                0.9        mg/dL        0.7 - 1.3
+
+Page 1 of 2
+"""
+
+print("\n▸ Whole-report extraction")
+let readings = LabTextParser.parse(report)
+ok("extracted a plausible number of results (got \(readings.count))",
+   readings.count >= 15 && readings.count <= 20)
+
+func find(_ id: String) -> Reading? { readings.first { $0.biomarkerID == id } }
+
+ok("haemoglobin recognised",      find("hgb")?.value == 14.2)
+ok("its unit captured",           find("hgb")?.unit == "g/dL")
+ok("its printed range captured",  find("hgb")?.range.low == 13 && find("hgb")?.range.high == 17)
+ok("haemoglobin reads within range", find("hgb")?.status == .within)
+
+ok("'Cholesterol - Total (CHOD-PAP)' → total cholesterol", find("chol")?.value == 195)
+ok("'< 200' parsed as an upper bound", find("chol")?.range.high == 200)
+ok("cholesterol within range",     find("chol")?.status == .within)
+ok("LDL 118 against '< 100' reads above", find("ldl")?.status == .above)
+ok("HDL 48 against '> 40' reads within",  find("hdl")?.status == .within)
+
+ok("'SGPT (ALT)' → ALT",           find("alt")?.value == 32)
+ok("'SGOT (AST)' → AST",           find("ast")?.value == 28)
+ok("'TSH (Ultrasensitive)' → TSH", find("tsh")?.value == 2.45)
+ok("'S. Creatinine' → creatinine", find("creat")?.value == 0.9)
+ok("'Total Leucocyte Count' → WBC", find("wbc")?.value == 7800)
+ok("'PCV' → haematocrit",          find("hct")?.value == 42.1)
+
+print("\n▸ The case that breaks naive parsers")
+ok("'25 OH Vitamin D' takes 32 as the value, not the 25 in its name",
+   find("vitd")?.value == 32)
+ok("'Vitamin B12' takes 450, not the 12 in B12",
+   find("b12")?.value == 450)
+ok("'HbA1c' takes 5.6", find("hba1c")?.value == 5.6)
+
+print("\n▸ Page furniture rejected")
+ok("no reading called 'Page'",
+   !readings.contains { $0.rawName.lowercased().contains("page") })
+ok("no reading from the patient line",
+   !readings.contains { $0.rawName.lowercased().contains("patient") })
+ok("section headers produced no readings",
+   !readings.contains { $0.rawName.uppercased() == $0.rawName && $0.unit.isEmpty })
+
+print("\n▸ Collection date")
+let date = LabTextParser.findDate(in: report)
+let cal = Calendar(identifier: .gregorian)
+ok("found a date", date != nil)
+if let d = date {
+    ok("prefers 'Collected' (14 Jan 2025) over 'Reported'",
+       cal.component(.day, from: d) == 14 && cal.component(.month, from: d) == 1
+         && cal.component(.year, from: d) == 2025)
+}
+
+print("\n▸ Other date layouts")
+func dateOf(_ s: String) -> Date? { LabTextParser.findDate(in: s) }
+ok("ISO 'Collected: 2025-01-14'",
+   dateOf("Collected: 2025-01-14").map { cal.component(.year, from: $0) == 2025 } == true)
+ok("'Sample date: 14-Jan-2025'",
+   dateOf("Sample date: 14-Jan-2025").map { cal.component(.day, from: $0) == 14 } == true)
+ok("'Collected 14 Jan 2025'",
+   dateOf("Collected 14 Jan 2025").map { cal.component(.day, from: $0) == 14 } == true)
+ok("rejects an implausible year",
+   dateOf("Ref 12/34/1850") == nil)
+
+print("\n▸ Single-line robustness")
+func line(_ s: String) -> ParsedLine? { LabTextParser.parseLine(s) }
+ok("tight spacing 'Haemoglobin 14.2 g/dL 13.0-17.0'",
+   line("Haemoglobin 14.2 g/dL 13.0-17.0")?.value == 14.2)
+ok("that range still splits",
+   line("Haemoglobin 14.2 g/dL 13.0-17.0")?.range == "13.0-17.0")
+ok("no range column at all",
+   line("Haemoglobin 14.2 g/dL")?.unit == "g/dL")
+ok("empty line yields nothing", line("") == nil)
+ok("prose line with no number yields nothing", line("COMPLETE BLOOD COUNT") == nil)
+ok("a lone number yields nothing", line("42") == nil)
+
+print("\n▸ Unit reconciliation through the pipeline")
+let mmol = LabTextParser.parse("Total Cholesterol 5.2 mmol/L 3.0 - 5.5")
+ok("mmol/L cholesterol converted to mg/dL for plotting",
+   abs((mmol.first?.plottedValue ?? 0) - 201.08) < 0.5)
+ok("but the original value is preserved", mmol.first?.value == 5.2)
+ok("and the original unit is preserved",  mmol.first?.unit == "mmol/L")
+
+print("\n" + String(repeating: "─", count: 58))
+print(failed == 0 ? "✅ ALL \(passed) TESTS PASSED" : "❌ \(failed) FAILED, \(passed) passed")
+print(String(repeating: "─", count: 58) + "\n")
+exit(failed == 0 ? 0 : 1)
