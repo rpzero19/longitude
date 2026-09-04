@@ -11,7 +11,9 @@ settings:
     SWIFT_VERSION: "5.0"
     MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
-    DEVELOPMENT_TEAM: ""
+    # Your Team ID. Set here rather than only in Xcode's UI: the .xcodeproj is
+    # regenerated from this file, so a team set only in Xcode gets wiped.
+    DEVELOPMENT_TEAM: "U5J9JN6V59"
     CODE_SIGN_STYLE: Automatic
     ENABLE_USER_SCRIPT_SANDBOXING: YES
 
