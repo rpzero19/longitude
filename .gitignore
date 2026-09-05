@@ -3,3 +3,8 @@ build/
 DerivedData/
 xcuserdata/
 Longitude.xcodeproj/
+
+# Real lab reports used for local testing. These are personal medical
+# records and this repository is public — never commit them.
+sample_files/
+*.pdf
