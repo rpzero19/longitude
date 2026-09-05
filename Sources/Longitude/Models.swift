@@ -36,6 +36,9 @@ public struct ReferenceRange: Codable, Sendable, Equatable {
             .replacingOccurrences(of: " to ", with: " - ", options: .caseInsensitive)
             .replacingOccurrences(of: "≤", with: "<=")
             .replacingOccurrences(of: "≥", with: ">=")
+            // Some labs typewrite the symbol: ">/=" for "≥".
+            .replacingOccurrences(of: ">/=", with: ">=")
+            .replacingOccurrences(of: "</=", with: "<=")
 
         func number(_ s: String) -> Double? {
             Double(s.trimmingCharacters(in: CharacterSet(charactersIn: " <>=").union(.whitespaces)))

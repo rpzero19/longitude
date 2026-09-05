@@ -14,6 +14,7 @@ struct ImportView: View {
     @State private var photoItem: PhotosPickerItem?
     @State private var showingFileImporter = false
     @State private var busy = false
+    @State private var problem: String?
 
     enum Stage { case choose, paste, review }
 
@@ -36,7 +37,6 @@ struct ImportView: View {
                     }
                 }
             }
-            .photosPicker(isPresented: .constant(false), selection: $photoItem)
             .fileImporter(isPresented: $showingFileImporter,
                           allowedContentTypes: [.pdf]) { result in
                 if case .success(let url) = result { handlePDF(url) }
@@ -44,6 +44,13 @@ struct ImportView: View {
             .onChange(of: photoItem) { _, item in handlePhoto(item) }
             .overlay { if busy { ProgressView("Reading…").padding()
                 .background(.regularMaterial, in: .rect(cornerRadius: 12)) } }
+            .alert("Couldn't read that",
+                   isPresented: .init(get: { problem != nil },
+                                      set: { if !$0 { problem = nil } })) {
+                Button("OK", role: .cancel) { problem = nil }
+            } message: {
+                Text(problem ?? "")
+            }
         }
     }
 
@@ -123,8 +130,13 @@ struct ImportView: View {
 
     private func handlePDF(_ url: URL) {
         busy = true
-        Task {
-            let extracted = TextExtraction.fromPDF(at: url) ?? ""
+        Task { @MainActor in
+            guard let extracted = TextExtraction.fromPDF(at: url) else {
+                fail("That PDF has no text in it — it's a scan or a picture of a "
+                   + "page. Photograph the report instead and it will be read "
+                   + "with text recognition.")
+                return
+            }
             await extract(from: extracted)
         }
     }
@@ -132,27 +144,50 @@ struct ImportView: View {
     private func handlePhoto(_ item: PhotosPickerItem?) {
         guard let item else { return }
         busy = true
-        Task {
+        Task { @MainActor in
+            // Clear the selection as soon as it's taken. SwiftUI only fires
+            // onChange when the value differs, so leaving the last photo in
+            // place means choosing that same photo again does nothing at all —
+            // the picker opens, closes, and the user is left staring at an
+            // unchanged screen with no idea why.
+            defer { photoItem = nil }
+
             guard let data = try? await item.loadTransferable(type: Data.self),
-                  let image = UIImage(data: data),
-                  let extracted = await TextExtraction.fromImage(image) else {
-                busy = false; return
+                  let image = UIImage(data: data) else {
+                fail("That image couldn't be opened. Try taking the photo again.")
+                return
+            }
+            guard let extracted = await TextExtraction.fromImage(image) else {
+                fail("No text could be read from that photo. Get the whole page "
+                   + "in frame, in even light, with the text upright.")
+                return
             }
             await extract(from: extracted)
         }
     }
 
+    @MainActor
+    private func fail(_ message: String) {
+        busy = false
+        problem = message
+    }
+
+    @MainActor
     private func extract(from raw: String) async {
         busy = true
         let id = UUID()
         let date = LabTextParser.findDate(in: raw) ?? Date()
         let found = await ImportPipeline.readings(from: raw, date: date, reportID: id)
-        await MainActor.run {
-            readings = found
-            reportDate = date
-            busy = false
-            stage = .review
+        busy = false
+        guard !found.isEmpty else {
+            problem = "No results could be read from that. If the report is an "
+                    + "unusual layout, use \"Paste the text\" and paste the "
+                    + "results in directly."
+            return
         }
+        readings = found
+        reportDate = date
+        stage = .review
     }
 
     private func save() {

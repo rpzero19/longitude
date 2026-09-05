@@ -155,6 +155,27 @@ ok("m2 reconciles with the registry's m²",
    BiomarkerRegistry.normaliseUnit("ml/min/1.73m2")
      == BiomarkerRegistry.normaliseUnit("mL/min/1.73m²"))
 
+print("\n▸ A value welded to its unit is still the value")
+// "Creatinine : 1.2mg/dL 0.7 - 1.2". Without splitting, 1.2mg/dL is not
+// numeric, the parser walks past it and records 0.7 — the interval's lower
+// bound — as the result. A silently wrong number in a health record.
+ok("the result is the result, not the interval bound",
+   line("Creatinine : 1.2mg/dL 0.7 - 1.2")?.value == 1.2)
+ok("the welded unit is recovered",
+   line("Creatinine : 1.2mg/dL 0.7 - 1.2")?.unit == "mg/dL")
+ok("the interval survives intact",
+   line("Creatinine : 1.2mg/dL 0.7 - 1.2")?.range == "0.7 - 1.2")
+ok("the colon is not part of the name",
+   line("Creatinine : 1.2mg/dL 0.7 - 1.2")?.name == "Creatinine")
+ok("a date is never split apart",
+   LabTextParser.splitValueFromUnit("30-Jul-2026") == ["30-Jul-2026"])
+ok("nor is an interval",
+   LabTextParser.splitValueFromUnit("13.0-17.0") == ["13.0-17.0"])
+ok("but a welded value is",
+   LabTextParser.splitValueFromUnit("82.1mL/min") == ["82.1", "mL/min"])
+ok("a typewritten ≥ parses",
+   ReferenceRange.parse(">/= 90").low == 90)
+
 print("\n▸ Urine and serum are different tests")
 ok("spot urine creatinine resolves to its own analyte",
    BiomarkerRegistry.match("Creatinine Spot Urine")?.id == "creat_u")
@@ -165,6 +186,19 @@ ok("they never share a timeline",
      != BiomarkerRegistry.match("Creatinine.")?.id)
 ok("microalbumin resolves through the comma",
    BiomarkerRegistry.match("Microalbumin,Spot Urine")?.id == "microalb_u")
+
+print("\n▸ Vitamin D fractions stay separate from the total")
+ok("total", BiomarkerRegistry.match("Vitamin D total (D2+D3)")?.id == "vitd")
+ok("D2",    BiomarkerRegistry.match("25 (OH) VIT D2 Ergocalciferol")?.id == "vitd2")
+ok("D3",    BiomarkerRegistry.match("25 (OH) VIT D3 Cholecalciferol")?.id == "vitd3")
+ok("they never merge into one timeline",
+   Set([BiomarkerRegistry.match("Vitamin D total (D2+D3)")?.id,
+        BiomarkerRegistry.match("25 (OH) VIT D2 Ergocalciferol")?.id,
+        BiomarkerRegistry.match("25 (OH) VIT D3 Cholecalciferol")?.id]).count == 3)
+ok("'Not established' is not a unit",
+   line("25 (OH) VIT D2 Ergocalciferol : 2.22ng/mL Not established")?.unit == "ng/mL")
+ok("post-meal glucose is not fasting glucose",
+   BiomarkerRegistry.match("Post Lunch Glucose")?.id == "glucose_pp")
 
 print("\n▸ Analytes this lab reports that the registry once missed")
 ok("indirect bilirubin", BiomarkerRegistry.match("Indirect Bilirubin.")?.id == "bili_i")

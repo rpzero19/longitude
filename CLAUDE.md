@@ -67,7 +67,7 @@ registry doesn't know. Adding an alias is cheap; getting one wrong is expensive.
 ## Commands
 
 ```bash
-./run-tests.sh          # 116 logic tests, no Xcode needed
+./run-tests.sh          # 148 logic tests, no Xcode needed
 xcodegen generate       # regenerate the project after editing project.yml
 ```
 

@@ -27,6 +27,25 @@ public enum LabTextParser {
         return Double(token) != nil
     }
 
+    /// Splits a value welded to its unit: "1.2mg/dL" into "1.2" and "mg/dL".
+    ///
+    /// Some labs print no space there. Left joined, the token isn't numeric, so
+    /// the parser walks past the real result and takes the next bare number it
+    /// finds — which is the interval's lower bound. That records a wrong value
+    /// silently, and a wrong value in a health record is far worse than no
+    /// value, so this has to be handled rather than skipped.
+    ///
+    /// Only a genuine number followed by a letter splits: "30-Jul-2026" and
+    /// "13.0-17.0" must stay whole.
+    static func splitValueFromUnit(_ token: String) -> [String] {
+        let digits = token.prefix { $0.isNumber || $0 == "." || $0 == "," }
+        guard !digits.isEmpty else { return [token] }
+        let rest = token.dropFirst(digits.count)
+        guard let head = rest.first, head.isLetter || head == "%" else { return [token] }
+        guard Double(digits) != nil else { return [token] }
+        return [String(digits), String(rest)]
+    }
+
     /// Marks the start of a reference interval: "<", ">", "13.0-17.0", or a
     /// number that is followed by a dash.
     static func rangeStart(in tokens: [String]) -> Int? {
@@ -59,7 +78,8 @@ public enum LabTextParser {
         let line = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !line.isEmpty else { return nil }
 
-        let tokens = line.split(whereSeparator: { $0 == " " || $0 == "\t" }).map(String.init)
+        let tokens = line.split(whereSeparator: { $0 == " " || $0 == "\t" })
+            .flatMap { splitValueFromUnit(String($0)) }
         guard tokens.count >= 2 else { return nil }
 
         // Walk candidate value positions left to right and let the registry
@@ -85,7 +105,15 @@ public enum LabTextParser {
         guard let split = nameEnd, split < tokens.count,
               let value = Double(tokens[split]) else { return nil }
 
-        let name = tokens[0..<split].joined(separator: " ")
+        // "Creatinine : 1.2 mg/dL" — the colon separates the name from the
+        // value and is not part of either.
+        var nameTokens = Array(tokens[0..<split])
+        while let last = nameTokens.last, last == ":" || last == "-" {
+            nameTokens.removeLast()
+        }
+        var name = nameTokens.joined(separator: " ")
+        if name.hasSuffix(":") { name = String(name.dropLast()) }
+        name = name.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { return nil }
 
         let rest = Array(tokens[(split + 1)...])
@@ -165,7 +193,8 @@ public enum LabTextParser {
     static let captions: Set<String> = [
         "normal", "desirable", "optimal", "expected", "reference", "ref",
         "target", "therapeutic", "borderline", "adult", "adults", "male",
-        "female", "range", "interval",
+        "female", "range", "interval", "deficient", "insufficient",
+        "sufficient", "not", "established", "applicable",
     ]
 
     /// A unit carries letters and isn't itself a number. Digits alone don't
