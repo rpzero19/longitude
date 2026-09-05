@@ -1,0 +1,81 @@
+Longitude is a personal record-keeping app for laboratory results. It has no
+account, no login, no in-app purchases, no user-generated content and no
+network connection. Everything below works offline.
+
+1. SCREEN RECORDING
+Attached. Recorded on iPhone running the latest iOS, from app launch.
+
+2. PURPOSE AND AUDIENCE
+Lab results arrive as separate PDFs months or years apart. A single result
+tells you little; the trend is what matters. Longitude reads a person's own
+reports and draws each measurement as a timeline, so they can see how it has
+moved. Audience: adults who have blood tests periodically and want their
+own history in one place.
+Longitude reports; it does not interpret. It shows the number the lab printed
+and the reference interval the lab printed beside it. No diagnosis, no advice,
+no risk score, no recommendation.
+
+3. SETTING UP AND ACCESSING FEATURES
+No credentials needed. On first launch the app is empty. The quickest path,
+requiring no file transfer:
+  1. Tap "Add a report", then "Paste the text".
+  2. Paste SAMPLE A below. Tap "Read results", then "Save".
+  3. Repeat with SAMPLE B, an earlier date for the same fictional patient.
+  4. Tap any row (try Total cholesterol or HbA1c) for the timeline chart,
+     with the lab's reference interval shaded behind it.
+  5. The "Reports" tab lists both and can delete either.
+"Choose a PDF" and "Photograph or pick an image" are the other two import
+paths; the latter reads a photographed paper report with on-device text
+recognition. Both samples are fictional and contain no real patient data.
+
+SAMPLE A
+Collected: 12/03/2025
+Haemoglobin 14.2 g/dL 13.0 - 17.0
+Total Cholesterol 212 mg/dL < 200
+HDL Cholesterol 48 mg/dL > 40
+Triglycerides 145 mg/dL < 150
+Fasting Glucose 98 mg/dL 70 - 100
+HbA1c 5.6 % 4.0 - 5.7
+TSH 2.10 uIU/mL 0.40 - 4.50
+Vitamin D (25-OH) 24 ng/mL 30 - 100
+Creatinine 0.9 mg/dL 0.7 - 1.3
+SGPT (ALT) 32 U/L < 50
+
+SAMPLE B
+Collected: 08/09/2024
+Haemoglobin 13.6 g/dL 13.0 - 17.0
+Total Cholesterol 238 mg/dL < 200
+Fasting Glucose 104 mg/dL 70 - 100
+HbA1c 6.0 % 4.0 - 5.7
+Vitamin D (25-OH) 18 ng/mL 30 - 100
+Creatinine 1.0 mg/dL 0.7 - 1.3
+
+4. EXTERNAL SERVICES, TOOLS AND PLATFORMS
+None. The app makes no network requests and contains no networking code, no
+third-party SDK, no analytics, no crash reporter, no advertising identifier,
+no authentication service, no payment processor and no data provider. It uses
+only Apple frameworks, all on device: PDFKit (PDF text), Vision (on-device
+text recognition), Swift Charts (timelines), and on iOS 26 with Apple
+Intelligence hardware, FoundationModels - Apple's on-device language model -
+to help read unusual report layouts. That inference is local; no report text
+is transmitted. It is optional: the built-in parser handles everything on
+devices without it. No external AI service is used. Reports are stored in the
+app's own container and leave the device only in the user's encrypted backup.
+
+5. REGIONAL DIFFERENCES
+None. Behaviour is identical everywhere. No region-gated features, no
+region-specific content, no server to vary by locale. It reads whatever units
+and intervals the user's own report contains - conventional (mg/dL) and SI
+(mmol/L) are both supported - so it works with reports from any country.
+
+6. REGULATED INDUSTRY / THIRD-PARTY MATERIAL
+Longitude is not a medical device and needs no licence or authorisation. It
+does not diagnose, treat, cure, mitigate or prevent disease, calculates no
+clinical score, and gives no health advice or warning. It is a record-keeping
+and charting tool, equivalent to a user typing their own results into a
+spreadsheet and plotting them.
+It contains no protected third-party material. Every number shown, including
+the reference interval and the in-range indication, is read from the user's
+own report as printed by their own laboratory. Longitude publishes no
+reference intervals or clinical guidelines of its own. All content is supplied
+by the user, is their own health record, and stays on their device.
