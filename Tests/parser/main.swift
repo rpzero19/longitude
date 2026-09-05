@@ -119,6 +119,61 @@ ok("mmol/L cholesterol converted to mg/dL for plotting",
 ok("but the original value is preserved", mmol.first?.value == 5.2)
 ok("and the original unit is preserved",  mmol.first?.unit == "mmol/L")
 
+print("\n▸ Column order the lab chose, not the one we assumed")
+// A real Indian pathology report prints the interval before the unit. The
+// unit then lands inside the range, the unit comes back empty, and every
+// result on the page is discarded as "not a result".
+ok("'Gamma GT. 42 10-71 U/L' keeps its unit",
+   line("Gamma GT. 42 10-71 U/L")?.unit == "U/L")
+ok("and its interval",
+   line("Gamma GT. 42 10-71 U/L")?.range == "10-71")
+ok("open-ended interval before the unit: '48 <45 U/L'",
+   line("Alanine Aminotransferase (ALT/SGPT) 48 <45 U/L")?.unit == "U/L")
+ok("unit-after-value order still works",
+   line("Haemoglobin 14.2 g/dL 13.0-17.0")?.unit == "g/dL")
+
+print("\n▸ One panel printed twice is still one reading")
+let twice = LabTextParser.parse("""
+Albumin. 5.0 3.5-5.2 g/dL
+Blood Urea Nitrogen. 15 6-20 mg/dL
+Albumin. 5.0 3.5-5.2 g/dL
+""")
+ok("the repeat is dropped", twice.filter { $0.biomarkerID == "alb" }.count == 1)
+ok("the other analyte survives", twice.count == 2)
+let differing = LabTextParser.parse("""
+Albumin. 5.0 3.5-5.2 g/dL
+Albumin. 4.2 3.5-5.2 g/dL
+""")
+ok("a genuinely different value is never merged away", differing.count == 2)
+
+print("\n▸ Captions in the interval column are not units")
+ok("'Normal :' is dropped",
+   line("MDRD, GFR 88.7 Normal : > 90 ml/min/1.73m2")?.unit == "ml/min/1.73m2")
+ok("leaving the interval readable",
+   line("MDRD, GFR 88.7 Normal : > 90 ml/min/1.73m2")?.range == "> 90")
+ok("m2 reconciles with the registry's m²",
+   BiomarkerRegistry.normaliseUnit("ml/min/1.73m2")
+     == BiomarkerRegistry.normaliseUnit("mL/min/1.73m²"))
+
+print("\n▸ Urine and serum are different tests")
+ok("spot urine creatinine resolves to its own analyte",
+   BiomarkerRegistry.match("Creatinine Spot Urine")?.id == "creat_u")
+ok("serum creatinine is unaffected",
+   BiomarkerRegistry.match("Creatinine.")?.id == "creat")
+ok("they never share a timeline",
+   BiomarkerRegistry.match("Creatinine Spot Urine")?.id
+     != BiomarkerRegistry.match("Creatinine.")?.id)
+ok("microalbumin resolves through the comma",
+   BiomarkerRegistry.match("Microalbumin,Spot Urine")?.id == "microalb_u")
+
+print("\n▸ Analytes this lab reports that the registry once missed")
+ok("indirect bilirubin", BiomarkerRegistry.match("Indirect Bilirubin.")?.id == "bili_i")
+ok("globulin",           BiomarkerRegistry.match("Globulin.")?.id == "glob")
+ok("A/G ratio run together as one word",
+   BiomarkerRegistry.match("A/GRatio.")?.id == "ag_ratio")
+ok("a unitless ratio still parses as a result",
+   LabTextParser.parse("A/GRatio. 1.47 0.8-2.0").count == 1)
+
 print("\n" + String(repeating: "─", count: 58))
 print(failed == 0 ? "✅ ALL \(passed) TESTS PASSED" : "❌ \(failed) FAILED, \(passed) passed")
 print(String(repeating: "─", count: 58) + "\n")

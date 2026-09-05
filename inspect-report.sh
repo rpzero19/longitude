@@ -7,6 +7,6 @@ cd "$(dirname "$0")"
 BIN=$(mktemp -d)/inspect
 swiftc -o "$BIN" \
   Sources/Longitude/Biomarkers.swift Sources/Longitude/Models.swift \
-  Sources/Longitude/JSONCoding.swift Sources/Longitude/LabTextParser.swift \
+  Sources/Longitude/JSONCoding.swift Sources/Longitude/PDFLayout.swift Sources/Longitude/LabTextParser.swift \
   Tools/inspect-report/main.swift 2>&1 | grep -v "^$" || true
 "$BIN" "$@"

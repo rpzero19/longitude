@@ -100,6 +100,9 @@ public enum BiomarkerRegistry {
         var s = raw.lowercased()
             .replacingOccurrences(of: "μ", with: "u")   // Greek mu
             .replacingOccurrences(of: "µ", with: "u")   // micro sign
+            // Labs type "m2" where the registry prints "m²"; same unit.
+            .replacingOccurrences(of: "²", with: "2")
+            .replacingOccurrences(of: "³", with: "3")
             .replacingOccurrences(of: " ", with: "")
             .replacingOccurrences(of: "%", with: "percent")
         // "mg/dl", "mg / dL", "mgdl" all mean the same thing.
@@ -205,6 +208,31 @@ public enum BiomarkerRegistry {
         BiomarkerDef(id: "prot_t", name: "Total protein", panel: .liver,
             aliases: ["total protein", "protein total", "total proteins"],
             canonicalUnit: "g/dL", conversions: ["g/l": 0.1, "gl": 0.1]),
+        BiomarkerDef(id: "bili_i", name: "Bilirubin (indirect)", panel: .liver,
+            aliases: ["indirect bilirubin", "bilirubin indirect",
+                      "unconjugated bilirubin"],
+            canonicalUnit: "mg/dL", conversions: ["umol/l": 0.0585, "umoll": 0.0585]),
+        BiomarkerDef(id: "glob", name: "Globulin", panel: .liver,
+            aliases: ["globulin", "serum globulin", "total globulin"],
+            canonicalUnit: "g/dL", conversions: ["g/l": 0.1, "gl": 0.1]),
+        // A ratio has no unit. "A/GRatio." normalises to "agratio" — labs run
+        // the words together — so both spacings have to be listed.
+        BiomarkerDef(id: "ag_ratio", name: "A/G ratio", panel: .liver,
+            aliases: ["a/g ratio", "agratio", "ag ratio",
+                      "albumin globulin ratio", "albumin/globulin ratio"],
+            canonicalUnit: "ratio"),
+        // Urine analytes are distinct tests from their serum namesakes and
+        // must never merge into the same timeline — different specimen,
+        // different reference interval, different meaning.
+        BiomarkerDef(id: "creat_u", name: "Creatinine (urine)", panel: .kidney,
+            aliases: ["creatinine spot urine", "urine creatinine",
+                      "creatinine urine", "spot urine creatinine"],
+            canonicalUnit: "mg/dL"),
+        BiomarkerDef(id: "microalb_u", name: "Microalbumin (urine)", panel: .kidney,
+            aliases: ["microalbumin", "urine microalbumin",
+                      "microalbumin spot urine", "spot urine microalbumin",
+                      "urinary microalbumin", "microalbuminuria"],
+            canonicalUnit: "mg/L"),
 
         // ── Kidney ───────────────────────────────────────────────────────────
         BiomarkerDef(id: "creat", name: "Creatinine", panel: .kidney,
@@ -217,7 +245,9 @@ public enum BiomarkerRegistry {
             aliases: ["bun", "blood urea nitrogen", "urea nitrogen"],
             canonicalUnit: "mg/dL", conversions: ["mmol/l": 2.8, "mmoll": 2.8]),
         BiomarkerDef(id: "egfr", name: "eGFR", panel: .kidney,
-            aliases: ["egfr", "estimated gfr", "gfr", "egfr ckd epi"],
+            aliases: ["egfr", "estimated gfr", "gfr", "egfr ckd epi",
+                      "mdrd gfr", "mdrd", "glomerular filtration rate",
+                      "estimated glomerular filtration rate"],
             canonicalUnit: "mL/min/1.73m²", higherIsBetter: true),
         BiomarkerDef(id: "urate", name: "Uric acid", panel: .kidney,
             aliases: ["uric acid", "urate", "serum uric acid"],

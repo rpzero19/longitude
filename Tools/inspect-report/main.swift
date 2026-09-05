@@ -51,7 +51,7 @@ if url.pathExtension.lowercased() == "pdf" {
         exit(1)
     }
     for i in 0..<doc.pageCount {
-        if let p = doc.page(at: i), let s = p.string { text += s + "\n" }
+        if let p = doc.page(at: i) { text += PDFLayout.text(of: p) + "\n" }
     }
     if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
         print("⚠️  The PDF has no extractable text — it's an image-only scan.")

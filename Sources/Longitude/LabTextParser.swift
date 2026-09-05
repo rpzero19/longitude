@@ -89,14 +89,36 @@ public enum LabTextParser {
         guard !name.isEmpty else { return nil }
 
         let rest = Array(tokens[(split + 1)...])
-        var unit = ""
-        var range = ""
+        var unitTokens: [String] = []
+        var rangeTokens: [String] = []
         if let r = rangeStart(in: rest) {
-            unit = rest[0..<r].joined(separator: " ")
-            range = rest[r...].joined(separator: " ")
+            unitTokens = Array(rest[0..<r])
+            rangeTokens = Array(rest[r...])
         } else {
-            unit = rest.joined(separator: " ")
+            unitTokens = rest
         }
+
+        // Labs caption the interval in the same column — "Normal : > 90",
+        // "Method:Calculated". A token carrying a colon is a label, not a unit.
+        unitTokens.removeAll { $0.contains(":") }
+
+        // Some captions carry no colon at all. These are words, not units, and
+        // leaving one in place both mislabels the reading and hides the real
+        // unit still sitting at the end of the interval.
+        unitTokens.removeAll { captions.contains($0.lowercased()) }
+
+        // Column order is not settled between labs. Plenty print the interval
+        // before the unit — "48 <45 U/L" rather than "48 U/L <45" — which
+        // strands the unit at the tail of the range and leaves the unit empty.
+        // An empty unit then fails looksLikeResult, so the whole line is
+        // dropped: one column ordering silently costs an entire report.
+        if unitTokens.isEmpty, rangeTokens.count > 1,
+           let last = rangeTokens.last, isUnitShaped(last) {
+            unitTokens = [rangeTokens.removeLast()]
+        }
+
+        let unit = unitTokens.joined(separator: " ")
+        let range = rangeTokens.joined(separator: " ")
 
         return ParsedLine(
             name: name,
@@ -108,7 +130,12 @@ public enum LabTextParser {
     /// Parses a whole report, keeping only lines that yield a usable reading.
     public static func parse(_ text: String, date: Date = Date(),
                              reportID: UUID? = nil) -> [Reading] {
-        text.split(whereSeparator: \.isNewline).compactMap { line -> Reading? in
+        // One PDF often bundles several panels, and a lab that runs albumin
+        // for both the liver and the kidney panel prints it on both — same
+        // specimen, same value, printed twice. Two identical points on one
+        // date is a printing artefact, not a repeated test, so keep the first.
+        var seen = Set<String>()
+        return text.split(whereSeparator: \.isNewline).compactMap { line -> Reading? in
             guard let parsed = parseLine(String(line)) else { return nil }
             let def = BiomarkerRegistry.match(parsed.name)
             // An unrecognised analyte is kept only when the line still looks
@@ -117,6 +144,8 @@ public enum LabTextParser {
             // and admitting one of those corrupts the record far worse than
             // dropping an obscure analyte does.
             if def == nil && !looksLikeResult(parsed) { return nil }
+            let fingerprint = "\(def?.id ?? parsed.name)|\(parsed.value)|\(parsed.unit)"
+            guard seen.insert(fingerprint).inserted else { return nil }
             return Reading(
                 biomarkerID: def?.id,
                 rawName: parsed.name,
@@ -130,6 +159,20 @@ public enum LabTextParser {
                 date: date,
                 reportID: reportID)
         }
+    }
+
+    /// Words labs use to head a reference interval. Never units.
+    static let captions: Set<String> = [
+        "normal", "desirable", "optimal", "expected", "reference", "ref",
+        "target", "therapeutic", "borderline", "adult", "adults", "male",
+        "female", "range", "interval",
+    ]
+
+    /// A unit carries letters and isn't itself a number. Digits alone don't
+    /// disqualify it — "ml/min/1.73m2" and "10^9/L" are units labs really use.
+    static func isUnitShaped(_ token: String) -> Bool {
+        guard Double(token) == nil, !isNumeric(token) else { return false }
+        return token.contains(where: \.isLetter) || token.contains("%")
     }
 
     /// Heuristics for whether an unrecognised line is plausibly a result.

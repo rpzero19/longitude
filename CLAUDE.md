@@ -45,6 +45,25 @@ registry doesn't know. Adding an alias is cheap; getting one wrong is expensive.
   (`TEAM.*`) signs development builds fine but cannot be used for App Store distribution,
   and the bundle ID won't appear in App Store Connect's dropdown until it's registered.
 
+- **Never use `PDFPage.string` to read a report.** It returns glyphs in the PDF's
+  drawing order, so a two-column lab report arrives as the whole name column
+  followed by the whole value column — every result severed from its name. Real
+  reports parsed to *zero* results this way. `PDFLayout` rebuilds visual rows
+  from glyph boxes; that's what both the app and `inspect-report` use.
+- **`PDFPage.characterBounds(at:)` is not indexed by `page.string`.** Newlines take
+  a slot in the string but draw no glyph, so the two drift apart by one per line
+  break. Walk a separate cursor that only advances on drawn glyphs.
+- **Rows cannot be clustered by any single y coordinate.** Baselines split
+  descenders off ("Phosphatase" loses its p); tops split x-height letters. Cluster
+  by *vertical overlap*, and assign leftover glyphs to their nearest row —
+  dropping the hyphen from "10-71" turns one interval into two stray numbers.
+- **Column order is not settled between labs.** Some print `value interval unit`
+  ("48 <45 U/L"), some `value unit interval`. Assuming one order leaves `unit`
+  empty, which `looksLikeResult` then treats as "not a result" — silently
+  discarding an entire report.
+- **`sample_files/` is git-ignored and must stay that way.** It holds real medical
+  records and this repo is public.
+
 ## Commands
 
 ```bash

@@ -17,9 +17,11 @@ public enum TextExtraction {
         guard let doc = PDFDocument(url: url) else { return nil }
         var text = ""
         for i in 0..<doc.pageCount {
-            if let page = doc.page(at: i), let s = page.string { text += s + "\n" }
+            // Not page.string: that returns glyphs in drawing order, which
+            // splits a lab report's two columns apart. See PDFLayout.
+            if let page = doc.page(at: i) { text += PDFLayout.text(of: page) + "\n" }
         }
-        return text.isEmpty ? nil : text
+        return text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : text
     }
 
     /// OCR. Uses accurate recognition and reconstructs lines by vertical
