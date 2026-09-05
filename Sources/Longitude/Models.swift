@@ -21,6 +21,20 @@ public struct ReferenceRange: Codable, Sendable, Equatable {
 
     public var isUsable: Bool { low != nil || high != nil }
 
+    /// Restates the parsed bounds in words, so someone typing an interval can
+    /// confirm it was understood the way they meant it.
+    public var describedBounds: String {
+        func n(_ d: Double) -> String {
+            d == d.rounded() ? String(Int(d)) : String(d)
+        }
+        switch (low, high) {
+        case let (l?, h?):  return "Read as \(n(l)) to \(n(h))"
+        case let (l?, nil): return "Read as \(n(l)) and above"
+        case let (nil, h?): return "Read as up to \(n(h))"
+        default:            return ""
+        }
+    }
+
     /// Parses the forms labs actually print. Returns a range with whatever
     /// bounds it could establish; an unparseable string still keeps `printed`
     /// so the user sees what the lab said.

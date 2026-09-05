@@ -67,7 +67,7 @@ registry doesn't know. Adding an alias is cheap; getting one wrong is expensive.
 ## Commands
 
 ```bash
-./run-tests.sh          # 148 logic tests, no Xcode needed
+./run-tests.sh          # 168 logic tests, no Xcode needed
 xcodegen generate       # regenerate the project after editing project.yml
 ```
 
@@ -76,8 +76,14 @@ and `-initialTab <n>` launch arguments so the set can be regenerated after any U
 
 ## Known gaps
 
-- The parser has only met synthetic reports plus one manual paste test. Real PDFs from
-  actual labs are the honest test and the most likely source of bugs.
+- The parser has met three real labs. Each one broke it in a new way, and the next
+  one will too — that is the nature of the problem, not a defect to be finished off.
+  What matters is that an unknown layout fails *safely*: it must never record a
+  number the report doesn't say, and never fail silently. Manual entry
+  (`ManualEntry.swift`, `ReadingEditor.swift`) is the floor under all of it — any
+  report can be typed in, so an unreadable lab is a chore rather than a wall.
+- A saved reading can't be corrected yet; corrections happen on the review screen
+  before saving. Editing after the fact needs a store update path.
 - Reference intervals vary by sex and age. Using whatever the report printed is correct,
   but worth being deliberate about if per-analyte defaults are ever added.
 - Import UI was verified manually once; there are no UI tests.

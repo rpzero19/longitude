@@ -208,6 +208,55 @@ ok("A/G ratio run together as one word",
 ok("a unitless ratio still parses as a result",
    LabTextParser.parse("A/GRatio. 1.47 0.8-2.0").count == 1)
 
+print("\n▸ Typing a result in by hand")
+let manual = ManualEntry.reading(name: "SGPT (ALT)", value: 32, unit: "U/L",
+                                 rangeText: "< 50", date: Date())
+ok("resolves through the registry like an import",
+   manual?.biomarkerID == "alt")
+ok("so it joins the same timeline", manual?.rawName == "SGPT (ALT)")
+ok("the typed interval is parsed", manual?.range.high == 50)
+ok("an unknown analyte is still accepted",
+   ManualEntry.reading(name: "Zorbium", value: 1, unit: "g/L",
+                       rangeText: "", date: Date())?.rawName == "Zorbium")
+ok("but is not given a false identity",
+   ManualEntry.reading(name: "Zorbium", value: 1, unit: "g/L",
+                       rangeText: "", date: Date())?.biomarkerID == nil)
+ok("a blank name is refused",
+   ManualEntry.reading(name: "  ", value: 1, unit: "g/L",
+                       rangeText: "", date: Date()) == nil)
+ok("units still convert for plotting",
+   ManualEntry.reading(name: "Total Cholesterol", value: 5.2, unit: "mmol/L",
+                       rangeText: "", date: Date())
+       .map { abs(($0.canonicalValue ?? 0) - 201.08) < 0.5 } == true)
+ok("a comma decimal is understood", ManualEntry.number("1,2") == 1.2)
+ok("blank is not a number", ManualEntry.number(" ") == nil)
+
+print("\n▸ Correcting a reading keeps it the same reading")
+let wrong = ManualEntry.reading(name: "Creatinine", value: 0.7, unit: "mg/dL",
+                                rangeText: "0.7 - 1.2", date: Date())!
+let fixed = ManualEntry.edited(wrong, name: "Creatinine", value: 1.2,
+                               unit: "mg/dL", rangeText: "0.7 - 1.2")!
+ok("the identity is preserved, so the row updates in place", fixed.id == wrong.id)
+ok("the value is corrected", fixed.value == 1.2)
+ok("changing the analyte re-resolves it",
+   ManualEntry.edited(wrong, name: "Haemoglobin", value: 14.2,
+                      unit: "g/dL", rangeText: "")?.biomarkerID == "hgb")
+
+print("\n▸ Confirming a typed interval back to the user")
+ok("two bounds", ReferenceRange.parse("13.0 - 17.0").describedBounds == "Read as 13 to 17")
+ok("upper only",  ReferenceRange.parse("< 200").describedBounds == "Read as up to 200")
+ok("lower only",  ReferenceRange.parse("> 40").describedBounds == "Read as 40 and above")
+ok("nothing understood", ReferenceRange.parse("Not established").describedBounds == "")
+
+print("\n▸ Finding an analyte to enter")
+ok("an alias finds the canonical name",
+   BiomarkerRegistry.search("SGPT").first?.id == "alt")
+ok("a partial name works",
+   BiomarkerRegistry.search("cholest").contains { $0.id == "chol" })
+ok("an empty query lists everything",
+   BiomarkerRegistry.search("").count == BiomarkerRegistry.all.count)
+ok("nonsense finds nothing", BiomarkerRegistry.search("zzzzz").isEmpty)
+
 print("\n" + String(repeating: "─", count: 58))
 print(failed == 0 ? "✅ ALL \(passed) TESTS PASSED" : "❌ \(failed) FAILED, \(passed) passed")
 print(String(repeating: "─", count: 58) + "\n")

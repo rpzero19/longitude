@@ -365,6 +365,25 @@ public enum BiomarkerRegistry {
         return map
     }()
 
+    /// Ranked lookup for the analyte picker: exact match first, then names
+    /// that begin with the query, then anything containing it. An alias hit
+    /// counts, so searching "SGPT" finds ALT.
+    public static func search(_ query: String, limit: Int = 30) -> [BiomarkerDef] {
+        let q = normalise(query)
+        guard !q.isEmpty else { return all.sorted { $0.name < $1.name } }
+        func rank(_ def: BiomarkerDef) -> Int? {
+            let keys = [normalise(def.name)] + def.aliases.map(normalise)
+            if keys.contains(q) { return 0 }
+            if keys.contains(where: { $0.hasPrefix(q) }) { return 1 }
+            if keys.contains(where: { $0.contains(q) }) { return 2 }
+            return nil
+        }
+        return all.compactMap { def in rank(def).map { (def, $0) } }
+            .sorted { ($0.1, $0.0.name) < ($1.1, $1.0.name) }
+            .prefix(limit)
+            .map(\.0)
+    }
+
     public static func definition(id: String) -> BiomarkerDef? {
         all.first { $0.id == id }
     }

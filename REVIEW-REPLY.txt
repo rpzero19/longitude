@@ -1,9 +1,9 @@
 Longitude is a personal record-keeping app for laboratory results. It has no
 account, no login, no in-app purchases, no user-generated content and no
-network connection. Everything below works offline.
+network connection. All of it works offline.
 
 1. SCREEN RECORDING
-Attached. Recorded on iPhone running the latest iOS, from app launch.
+Attached. Recorded on iPhone, latest iOS, from app launch.
 
 2. PURPOSE AND AUDIENCE
 Lab results arrive as separate PDFs months or years apart. A single result
@@ -16,17 +16,17 @@ and the reference interval the lab printed beside it. No diagnosis, no advice,
 no risk score, no recommendation.
 
 3. SETTING UP AND ACCESSING FEATURES
-No credentials needed. On first launch the app is empty. The quickest path,
-requiring no file transfer:
+No credentials needed. The app opens empty. Quickest path, no file transfer:
   1. Tap "Add a report", then "Paste the text".
   2. Paste SAMPLE A below. Tap "Read results", then "Save".
   3. Repeat with SAMPLE B, an earlier date for the same fictional patient.
   4. Tap any row (try Total cholesterol or HbA1c) for the timeline chart,
      with the lab's reference interval shaded behind it.
   5. The "Reports" tab lists both and can delete either.
-"Choose a PDF" and "Photograph or pick an image" are the other two import
-paths; the latter reads a photographed paper report with on-device text
-recognition. Both samples are fictional and contain no real patient data.
+"Choose a PDF", "Photograph or pick an image" (on-device text recognition)
+and "Enter results by hand" are the other import paths. Any result can also
+be corrected by tapping it before saving. Both samples are fictional and
+contain no real patient data.
 
 SAMPLE A
 Collected: 12/03/2025
@@ -65,8 +65,8 @@ app's own container and leave the device only in the user's encrypted backup.
 5. REGIONAL DIFFERENCES
 None. Behaviour is identical everywhere. No region-gated features, no
 region-specific content, no server to vary by locale. It reads whatever units
-and intervals the user's own report contains - conventional (mg/dL) and SI
-(mmol/L) are both supported - so it works with reports from any country.
+and intervals the report contains - conventional (mg/dL) and SI (mmol/L) are
+both supported - so it works with reports from any country.
 
 6. REGULATED INDUSTRY / THIRD-PARTY MATERIAL
 Longitude is not a medical device and needs no licence or authorisation. It
