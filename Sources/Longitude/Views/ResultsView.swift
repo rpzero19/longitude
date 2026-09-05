@@ -16,6 +16,14 @@ struct ResultsView: View {
             .navigationDestination(for: String.self) { id in
                 if let s = store.series.first(where: { $0.id == id }) {
                     SeriesDetailView(series: s)
+                } else {
+                    // Deleting the last reading of an analyte removes the series
+                    // out from under this screen. Say so, rather than leaving a
+                    // blank page behind a back button.
+                    ContentUnavailableView("No readings left",
+                                           systemImage: "chart.xyaxis.line",
+                                           description: Text("Every reading for this "
+                                             + "test has been deleted."))
                 }
             }
             .onAppear {

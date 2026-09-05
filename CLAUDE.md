@@ -67,7 +67,7 @@ registry doesn't know. Adding an alias is cheap; getting one wrong is expensive.
 ## Commands
 
 ```bash
-./run-tests.sh          # 168 logic tests, no Xcode needed
+./run-tests.sh          # 184 logic tests in four suites, no Xcode needed
 xcodegen generate       # regenerate the project after editing project.yml
 ```
 
@@ -82,8 +82,10 @@ and `-initialTab <n>` launch arguments so the set can be regenerated after any U
   number the report doesn't say, and never fail silently. Manual entry
   (`ManualEntry.swift`, `ReadingEditor.swift`) is the floor under all of it — any
   report can be typed in, so an unreadable lab is a chore rather than a wall.
-- A saved reading can't be corrected yet; corrections happen on the review screen
-  before saving. Editing after the fact needs a store update path.
+- Readings can be corrected before saving (review screen) and after (tap one on a
+  chart). `LabStore.update` deliberately keeps the stored date and owning report,
+  so a correction can say what the report reads but can't move a result onto
+  another date or detach it from its document.
 - Reference intervals vary by sex and age. Using whatever the report printed is correct,
   but worth being deliberate about if per-analyte defaults are ever added.
 - Import UI was verified manually once; there are no UI tests.

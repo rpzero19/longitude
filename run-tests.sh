@@ -5,8 +5,9 @@ cd "$(dirname "$0")"
 OUT=$(mktemp -d)
 CORE="Sources/Longitude/Biomarkers.swift Sources/Longitude/Models.swift \
       Sources/Longitude/JSONCoding.swift Sources/Longitude/LabTextParser.swift \
-      Sources/Longitude/ManualEntry.swift"
-for suite in "main:registry & units" "parsing:ranges & series" "parser:report extraction"; do
+      Sources/Longitude/ManualEntry.swift \
+      Sources/Longitude/Store.swift"
+for suite in "main:registry & units" "parsing:ranges & series" "parser:report extraction" "store:saved data"; do
   dir="${suite%%:*}"; label="${suite#*:}"
   src=$([ "$dir" = "main" ] && echo "Tests/main.swift" || echo "Tests/$dir/main.swift")
   echo "═══ $label ═══"

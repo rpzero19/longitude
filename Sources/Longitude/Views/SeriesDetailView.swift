@@ -2,7 +2,9 @@ import SwiftUI
 import Charts
 
 struct SeriesDetailView: View {
+    @EnvironmentObject var store: LabStore
     let series: Series
+    @State private var editing: Reading?
 
     /// The interval from the most recent report, drawn as a band behind the line.
     private var band: (low: Double, high: Double)? {
@@ -45,6 +47,9 @@ struct SeriesDetailView: View {
         }
         .navigationTitle(series.name)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $editing) { reading in
+            ReadingEditor(existing: reading) { store.update($0) }
+        }
     }
 
     // Each section is its own property: SwiftUI view builders nest generic
@@ -71,10 +76,22 @@ struct SeriesDetailView: View {
     }
 
     private var readingsSection: some View {
-        Section("Readings") {
+        Section {
             ForEach(series.readings.reversed()) { reading in
-                readingRow(reading)
+                Button { editing = reading } label: { readingRow(reading) }
+                    .buttonStyle(.plain)
+                    .swipeActions {
+                        Button(role: .destructive) { store.delete(reading) } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
             }
+        } header: {
+            Text("Readings")
+        } footer: {
+            // A misread value that has already been saved was, until now,
+            // permanent. It shouldn't be.
+            Text("Tap a reading to correct what the report says. Swipe to delete one.")
         }
     }
 
@@ -100,7 +117,10 @@ struct SeriesDetailView: View {
                         .foregroundStyle(r.status == .within ? Color.secondary : Color.orange)
                 }
             }
+            Image(systemName: "chevron.right")
+                .font(.caption2).foregroundStyle(.tertiary)
         }
+        .contentShape(Rectangle())
     }
 
     private var disclaimerSection: some View {

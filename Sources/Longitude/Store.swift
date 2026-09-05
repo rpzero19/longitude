@@ -74,6 +74,29 @@ public final class LabStore: ObservableObject {
         save()
     }
 
+    /// Corrects a saved reading in place.
+    ///
+    /// The date and the owning report are taken from the stored reading, never
+    /// from the edit: a correction says what the report reads, and must not be
+    /// able to move a result onto a different date or detach it from the
+    /// document it came from.
+    public func update(_ reading: Reading) {
+        guard let i = data.readings.firstIndex(where: { $0.id == reading.id }) else { return }
+        var kept = reading
+        kept.date = data.readings[i].date
+        kept.reportID = data.readings[i].reportID
+        data.readings[i] = kept
+        save()
+    }
+
+    /// Removes one saved reading. The report it came from is kept — it still
+    /// records a document that was imported, and deleting reports is a separate,
+    /// explicit action on the Reports tab.
+    public func delete(_ reading: Reading) {
+        data.readings.removeAll { $0.id == reading.id }
+        save()
+    }
+
     public func deleteReport(_ report: LabReport) {
         data.readings.removeAll { $0.reportID == report.id }
         data.reports.removeAll { $0.id == report.id }
