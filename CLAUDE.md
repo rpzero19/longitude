@@ -64,10 +64,29 @@ registry doesn't know. Adding an alias is cheap; getting one wrong is expensive.
 - **`sample_files/` is git-ignored and must stay that way.** It holds real medical
   records and this repo is public.
 
+- **The photo import path has broken twice on real devices and cannot be reproduced
+  in the simulator.** A UI test (`Tests/UITests`) drives it end to end and passes
+  both with and without the presentation fix, so it guards the flow but proves
+  nothing about that bug. Treat device-only reports here as real even when the
+  simulator is green.
+- **Don't present failures from this screen with `.alert`.** ImportView is a sheet
+  that also presents a file importer, a photo picker and an editor; one more
+  presentation competing with those is one more thing that can silently not
+  appear — which is what made a failed import look like it did nothing. Failures
+  render as an inline banner instead.
+- **Two `.sheet` modifiers on one view is a standing SwiftUI hazard** — one quietly
+  wins. The editor is presented through a single sheet driven by an enum.
+
 ## Commands
 
 ```bash
 ./run-tests.sh          # 184 logic tests in four suites, no Xcode needed
+
+# UI tests need a simulator with a photo in its library:
+xcrun simctl addmedia booted some-report.png
+xcodebuild test -project Longitude.xcodeproj -scheme Longitude \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -only-testing:LongitudeUITests
 xcodegen generate       # regenerate the project after editing project.yml
 ```
 

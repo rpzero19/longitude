@@ -15,8 +15,27 @@ struct ImportView: View {
     @State private var showingFileImporter = false
     @State private var busy = false
     @State private var problem: String?
-    @State private var editing: Reading?
-    @State private var addingByHand = false
+    @State private var showingPhotoPicker = false
+    @State private var editor: EditorTarget?
+
+    /// One sheet, two jobs. Two `.sheet` modifiers on the same view is a
+    /// standing SwiftUI hazard — one of them quietly wins — and this screen
+    /// already presents a file importer and a photo picker on top of being a
+    /// sheet itself.
+    enum EditorTarget: Identifiable {
+        case new
+        case existing(Reading)
+        var id: String {
+            switch self {
+            case .new: return "new"
+            case .existing(let r): return r.id.uuidString
+            }
+        }
+        var reading: Reading? {
+            if case .existing(let r) = self { return r }
+            return nil
+        }
+    }
 
     enum Stage { case choose, paste, review }
 
@@ -25,25 +44,23 @@ struct ImportView: View {
         // the whole screen in front of the type-checker at once, and it gives
         // up — this file has hit that limit before.
         NavigationStack {
-            staged
+            VStack(spacing: 0) {
+                if let problem { banner(problem) }
+                staged
+            }
                 .navigationTitle(stage == .review ? "Check the results" : "Add a report")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar { toolbarContent }
                 .modifier(ImportSources(showingFileImporter: $showingFileImporter,
+                                        showingPhotoPicker: $showingPhotoPicker,
                                         photoItem: $photoItem,
                                         onPDF: handlePDF,
                                         onPhoto: handlePhoto))
                 .overlay { if busy { reading } }
-                .sheet(item: $editing) { reading in
-                    ReadingEditor(existing: reading, onSave: replace)
-                }
-                .sheet(isPresented: $addingByHand) {
-                    ReadingEditor(existing: nil, onSave: append)
-                }
-                .alert("Couldn't read that", isPresented: hasProblem) {
-                    Button("OK", role: .cancel) { problem = nil }
-                } message: {
-                    Text(problem ?? "")
+                .sheet(item: $editor) { target in
+                    ReadingEditor(existing: target.reading) { saved in
+                        target.reading == nil ? append(saved) : replace(saved)
+                    }
                 }
         }
     }
@@ -72,8 +89,25 @@ struct ImportView: View {
             .background(.regularMaterial, in: .rect(cornerRadius: 12))
     }
 
-    private var hasProblem: Binding<Bool> {
-        .init(get: { problem != nil }, set: { if !$0 { problem = nil } })
+    /// Shown in the view rather than presented.
+    ///
+    /// This screen is already a sheet that presents a file importer, a photo
+    /// picker and an editor. An alert competing with all of that is one more
+    /// thing that can quietly fail to appear — and a failure the user cannot
+    /// see is exactly what made the photo path look like it did nothing.
+    private func banner(_ text: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+            Text(text).font(.footnote)
+            Spacer(minLength: 0)
+            Button { problem = nil } label: {
+                Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(12)
+        .background(Color.orange.opacity(0.12))
     }
 
     /// An edit updates the row in place; it never adds a second one.
@@ -96,7 +130,7 @@ struct ImportView: View {
                 Button { showingFileImporter = true } label: {
                     Label("Choose a PDF", systemImage: "doc.fill")
                 }
-                PhotosPicker(selection: $photoItem, matching: .images) {
+                Button { showingPhotoPicker = true } label: {
                     Label("Photograph or pick an image", systemImage: "camera.fill")
                 }
                 Button { stage = .paste } label: {
@@ -106,7 +140,7 @@ struct ImportView: View {
                     readings = []
                     reportDate = Date()
                     stage = .review
-                    addingByHand = true
+                    editor = .new
                 } label: {
                     Label("Enter results by hand", systemImage: "square.and.pencil")
                 }
@@ -145,11 +179,11 @@ struct ImportView: View {
             }
             Section {
                 ForEach(readings) { r in
-                    Button { editing = r } label: { row(r) }
+                    Button { editor = .existing(r) } label: { row(r) }
                         .buttonStyle(.plain)
                 }
                 .onDelete { readings.remove(atOffsets: $0) }
-                Button { addingByHand = true } label: {
+                Button { editor = .new } label: {
                     Label("Add a result", systemImage: "plus.circle.fill")
                 }
             } header: {
@@ -210,9 +244,24 @@ struct ImportView: View {
             // unchanged screen with no idea why.
             defer { photoItem = nil }
 
-            guard let data = try? await item.loadTransferable(type: Data.self),
-                  let image = UIImage(data: data) else {
-                fail("That image couldn't be opened. Try taking the photo again.")
+            // Report which step failed, and what the system said. A photo can
+            // fail to load for reasons the app can't see — an image still in
+            // iCloud, an unsupported format — and "nothing happened" leaves
+            // nobody, including the developer, able to tell which.
+            let data: Data
+            do {
+                guard let loaded = try await item.loadTransferable(type: Data.self) else {
+                    fail("That photo couldn't be loaded. If it's stored in iCloud, "
+                       + "open it in Photos first so it downloads, then try again.")
+                    return
+                }
+                data = loaded
+            } catch {
+                fail("That photo couldn't be loaded — \(error.localizedDescription)")
+                return
+            }
+            guard let image = UIImage(data: data) else {
+                fail("That file didn't open as an image (\(data.count) bytes).")
                 return
             }
             guard let extracted = await TextExtraction.fromImage(image) else {
@@ -238,9 +287,12 @@ struct ImportView: View {
         let found = await ImportPipeline.readings(from: raw, date: date, reportID: id)
         busy = false
         guard !found.isEmpty else {
-            problem = "No results could be read from that. If the report is an "
-                    + "unusual layout, use \"Paste the text\" and paste the "
-                    + "results in directly."
+            // Character count included deliberately: it separates "the text was
+            // never read" from "the text was read but nothing in it parsed",
+            // which are different bugs with different fixes.
+            problem = "Read \(raw.count) characters, but no results in them. "
+                    + "If the layout is unusual, use \"Paste the text\", or "
+                    + "\"Enter results by hand\"."
             return
         }
         readings = found
@@ -257,16 +309,27 @@ struct ImportView: View {
 /// The file and photo importers, lifted out of `body` for the type-checker.
 private struct ImportSources: ViewModifier {
     @Binding var showingFileImporter: Bool
+    @Binding var showingPhotoPicker: Bool
     @Binding var photoItem: PhotosPickerItem?
     let onPDF: (URL) -> Void
     let onPhoto: (PhotosPickerItem?) -> Void
 
+    /// Both pickers are presented from here, not from inside the stage they are
+    /// launched from.
+    ///
+    /// A `PhotosPicker` placed in the chooser is destroyed the moment reading
+    /// succeeds and the stage becomes .review — while it is still unwinding its
+    /// own presentation. That tears down the sheet this whole screen lives in,
+    /// so the import vanishes and nothing is saved. Presented from the stable
+    /// parent it outlives the stage change, exactly as the file importer does.
     func body(content: Content) -> some View {
         content
             .fileImporter(isPresented: $showingFileImporter,
                           allowedContentTypes: [.pdf]) { result in
                 if case .success(let url) = result { onPDF(url) }
             }
+            .photosPicker(isPresented: $showingPhotoPicker,
+                          selection: $photoItem, matching: .images)
             .onChange(of: photoItem) { _, item in onPhoto(item) }
     }
 }
